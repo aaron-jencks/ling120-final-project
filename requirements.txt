@@ -1,0 +1,3 @@
+eng-to-ipa
+pytorch
+tqdm
