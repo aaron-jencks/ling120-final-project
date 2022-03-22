@@ -5,11 +5,30 @@ For this project I used [Mozilla's Common Voice Project][1]
 to see if I could create an AI to generate speech better than the current state of the art.
 
 ## Background
-According to sources I was able to find (see below), the current state of the art in NLG uses a combination of
-spectrograms and autoencoders to generate speech. 
+There are two common technologies for synthesizing speech, concatenation synthesis, and format synthesis.
+For this project format synthesis was used because it does not rely on prerecorded samples ([wikipedia][4]).
+Format synthesis relies on spectrograms and autoencoders to generate speech. 
+A form of this method of synethsis is known as deep learning synthesis. Which is what will be focused on, 
+this tries to model the human voice by training deep learning models ([wikipedia][4]).
+
+### Diffculties
+
+One of the most common difficulties for text to speech is text normalization, wikipedia specifies that the majority of systems do the following,
+
+*"Most text-to-speech (TTS) systems do not generate semantic representations of their input texts, 
+as processes for doing so are unreliable, poorly understood, and computationally ineffective. As a result, 
+various heuristic techniques are used to guess the proper way to disambiguate homographs, 
+like examining neighboring words and using statistics about frequency of occurrence."* ([wikipedia][4]) 
+
+In contrast to my methodology, I do plan to create a semantic representation of the input texts, 
+this will be done using a combination of both automated and human methods.
+
+Valardo also metions that long distance relationships are often difficult to simulate using raw text data, 
+these include things like pitch, prosody, rhythm, etc ([Valardo][3]).
 
 ### Spectrograms
 
+Raw sound data is very dense, thus spectrograms are used. 
 A spectrogram is a lossy compression method that squeezes a short
 sequence of sound data into a Fast Fourier Transform (FFT) which results in an intensity graph displaying 
 frequency components of the sound sample given. 
@@ -30,6 +49,8 @@ the sound data. For training an autoencoder, it is actually pretty ingenious, au
 and the output is expected to be the same, this forces the model to figure out how to compress data losslessly.
 ([Valardo][2])
 
+## Proposed Methodology
+
 My novel methodology in this experiment will try to use raw speech data instead of spectrograms on the output side of 
 an autoencoder to see if I can make it sound more human than the current state of the art.
 
@@ -44,6 +65,8 @@ In this example, `batch_size` is the number of entries that are queued up at eac
 
 ## Works Cited
 
+“Speech Synthesis.” *Wikipedia*, Wikimedia Foundation, 12 Mar. 2022, [https://en.wikipedia.org/wiki/Speech_synthesis][5]. 
+
 Valardo, Valerio, "Autoencoders Explained Easily", *YouTube*, commentary by Valerio Valardo, 3, December, 2020, [xwrzh4e8DLs][2]
 
 Valardo, Valerio, "Sound Generation with Deep Learning || Approaches and Challenges", *YouTube*, commentary by Valerio Valardo, 20, November, 2020, [pwV8K9wXY2E][3]
@@ -51,3 +74,5 @@ Valardo, Valerio, "Sound Generation with Deep Learning || Approaches and Challen
 [1]: https://commonvoice.mozilla.org/en
 [2]: https://youtu.be/xwrzh4e8DLs
 [3]: https://youtu.be/pwV8K9wXY2E
+[4]: https://en.wikipedia.org/wiki/Speech_synthesis#Synthesizer_technologies
+[5]: https://en.wikipedia.org/wiki/Speech_synthesis
