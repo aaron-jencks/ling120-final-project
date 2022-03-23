@@ -5,7 +5,8 @@ import sys
 from typing import List
 
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton, QApplication
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton, QApplication, \
+    QInputDialog
 from tqdm import tqdm
 import eng_to_ipa as ipa
 import multiprocessing as mp
@@ -87,7 +88,9 @@ class MainWindow(QWidget):
     def double_check(self):
         for s in self.sentences:
             if s.is_wrong():
-                s.ipa.setText(input('What is the ipa for "{}"? '.format(s.eng.text())))
+                tipa, done = QInputDialog.getText(self, "IPA Correction", 'IPA for "{}"'.format(s.eng.text()))
+                if done:
+                    s.ipa.setText(tipa)
             self.dataset[s.index]['ipa'] = s.ipa.text()
         self.save_dataset()
         self.generate_next_set()
