@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     values = read_tsv(args.tsv_file)
     result = []
-    ccount = os.cpu_count() >> 1
+    ccount = os.cpu_count()
 
     procout = Queue(ccount * args.batch_size)
 
@@ -80,5 +80,5 @@ if __name__ == '__main__':
     for proc in processors:
         proc.join()
 
-    write_tsv(args.tsv_file, values)
+    write_tsv(args.tsv_file, new_values)
 

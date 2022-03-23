@@ -1,3 +1,5 @@
 eng-to-ipa
 pytorch
 tqdm
+pyqt4
+scikit-learn
