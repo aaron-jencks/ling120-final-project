@@ -3,6 +3,7 @@ import pathlib
 import random
 import sys
 from typing import List
+import re
 
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton, QApplication, \
@@ -169,6 +170,47 @@ if __name__ == '__main__':
 
         write_tsv(args.tsv_file, new_values)
         values = new_values
+
+    translations = {}
+    removes = []
+    for v in tqdm(values, desc='Updating missing IPA values'):
+        m = re.findall(r'\w+\*', v['ipa'])
+        for mt in m:
+            if mt in translations:
+                replacement = translations[mt]
+            else:
+                skip_entry = False
+                while True:
+                    replacement = input('What is the IPA for {}? '
+                                        '(type stop to stop, or save to save, or skip to remove) '.format(mt))
+                    if replacement.lower() == 'stop':
+                        print('Stopping here for now', file=sys.stderr)
+                        for r in removes:
+                            values.remove(r)
+                        write_tsv(args.tsv_file, values)
+                        exit(0)
+                    elif replacement.lower() == 'save':
+                        print('Saving current changes', file=sys.stderr)
+                        nvalues = values[:]
+                        for r in removes:
+                            nvalues.remove(r)
+                        write_tsv(args.tsv_file, nvalues)
+                        break
+                    elif replacement.lower() == 'skip':
+                        removes.append(v)
+                        skip_entry = True
+                        break
+
+                if skip_entry:
+                    break
+
+                translations[mt] = replacement
+            v['ipa'] = v['ipa'].replace(mt, replacement)
+
+    for r in removes:
+        values.remove(r)
+
+    write_tsv(args.tsv_file, values)
 
     app = QApplication(sys.argv)
     v = MainWindow(values, args.tsv_file)
