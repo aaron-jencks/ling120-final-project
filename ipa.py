@@ -171,40 +171,70 @@ if __name__ == '__main__':
         write_tsv(args.tsv_file, new_values)
         values = new_values
 
-    translations = {}
+    # for v in tqdm(values, desc='Updating hyphenated IPA values'):
+    #     m = re.findall(r'[a-zA-Z]+-[a-zA-Z\-\']+\*', v['ipa'])
+    #     for mt in m:
+    #         replacement = ''
+    #         if '-' in mt:
+    #             segs = mt.split('-')
+    #             ipas = []
+    #             for seg in segs:
+    #                 ipas.append(ipa.convert(seg.replace('*', '')))
+    #             replacement = '.'.join(ipas)
+    #
+    #         if len(replacement) > 0 and '*' not in replacement:
+    #             v['ipa'] = v['ipa'].replace(mt, replacement)
+    #
+    # write_tsv(args.tsv_file, values)
+
+    skips = set()
     removes = []
     for v in tqdm(values, desc='Updating missing IPA values'):
-        m = re.findall(r'\w+\*', v['ipa'])
+        m = re.findall(r'[a-zA-Z\-\']+\*', v['ipa'])
         for mt in m:
-            if mt in translations:
-                replacement = translations[mt]
-            else:
-                skip_entry = False
-                while True:
-                    replacement = input('What is the IPA for {}? '
-                                        '(type stop to stop, or save to save, or skip to remove) '.format(mt))
-                    if replacement.lower() == 'stop':
-                        print('Stopping here for now', file=sys.stderr)
-                        for r in removes:
-                            values.remove(r)
-                        write_tsv(args.tsv_file, values)
-                        exit(0)
-                    elif replacement.lower() == 'save':
-                        print('Saving current changes', file=sys.stderr)
-                        nvalues = values[:]
-                        for r in removes:
-                            nvalues.remove(r)
-                        write_tsv(args.tsv_file, nvalues)
-                        break
-                    elif replacement.lower() == 'skip':
-                        removes.append(v)
-                        skip_entry = True
-                        break
+            if mt in skips:
+                removes.append(v)
+                break
 
-                if skip_entry:
-                    break
+            skip_entry = False
+            while True:
+                replacement = input('\nWhat is the IPA for {} from \n\t"{}"\n\t"{}"\n? '
+                                    '(type stop to stop, or save to save, or skip to remove) '.format(mt,
+                                                                                                      v['sentence'],
+                                                                                                      v['ipa']))
+                if replacement.lower() == 'stop':
+                    print('Stopping here for now', file=sys.stderr)
+                    for r in removes:
+                        values.remove(r)
+                    write_tsv(args.tsv_file, values)
+                    errors = 0
+                    for vt in values:
+                        if re.search(r'[a-zA-Z\-\']+\*', vt['ipa']) is not None:
+                            errors += 1
+                    print('There are at least {} errors left'.format(errors), file=sys.stderr)
+                    exit(0)
+                elif replacement.lower() == 'save':
+                    print('Saving current changes', file=sys.stderr)
+                    nvalues = values[:]
+                    for r in removes:
+                        nvalues.remove(r)
+                    write_tsv(args.tsv_file, nvalues)
+                    errors = 0
+                    for vt in nvalues:
+                        if re.search(r'[a-zA-Z\-\']+\*', vt['ipa']) is not None:
+                            errors += 1
+                    print('There are at least {} errors left'.format(errors), file=sys.stderr)
+                    continue
+                elif replacement.lower() == 'skip':
+                    removes.append(v)
+                    skips.add(mt)
+                    skip_entry = True
 
-                translations[mt] = replacement
+                break
+
+            if skip_entry:
+                break
+
             v['ipa'] = v['ipa'].replace(mt, replacement)
 
     for r in removes:
