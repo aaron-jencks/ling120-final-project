@@ -4,6 +4,7 @@ import random
 import sys
 from typing import List
 
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton, QApplication
 from tqdm import tqdm
 import eng_to_ipa as ipa
@@ -22,6 +23,8 @@ class SentenceWidget(QWidget):
         self.checkbox = QCheckBox()
         self.eng = QLabel()
         self.ipa = QLabel()
+        self.eng.setFont(QFont('Arial font', 14))
+        self.ipa.setFont(QFont('Arial font', 14))
         self.layout.addWidget(self.checkbox)
         qvl = QWidget()
         vl = QVBoxLayout()
