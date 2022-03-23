@@ -27,7 +27,7 @@ class SentenceWidget(QWidget):
         vl = QVBoxLayout()
         vl.addWidget(self.eng)
         vl.addWidget(self.ipa)
-        qvl.setLayout(qvl)
+        qvl.setLayout(vl)
         self.layout.addWidget(qvl)
         self.setLayout(self.layout)
         self.index = -1
@@ -61,6 +61,7 @@ class MainWindow(QWidget):
         self.dataset = entries[:]
         self.filename = filename
         self.setLayout(self.layout)
+        self.generate_next_set()
 
     def save_dataset(self):
         write_tsv(self.filename, self.dataset)
@@ -164,7 +165,7 @@ if __name__ == '__main__':
         values = new_values
 
     app = QApplication(sys.argv)
-    v = MainWindow()
+    v = MainWindow(values, args.tsv_file)
     v.show()
     app.exec()
 
