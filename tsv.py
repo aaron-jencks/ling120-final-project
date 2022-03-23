@@ -14,6 +14,9 @@ class TSVEntry:
     def to_tsv(self) -> str:
         return '\t'.join(self.values.values())
 
+    def __contains__(self, item):
+        return item in self.values
+
     def __getitem__(self, item: str) -> Optional[str]:
         if item in self.values:
             return self.values[item]

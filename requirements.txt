@@ -1,5 +1,5 @@
 eng-to-ipa
 pytorch
-tqdm
-pyqt4
+tqdm~=4.63.0
 scikit-learn
+pyqt
