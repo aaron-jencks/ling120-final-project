@@ -45,5 +45,7 @@ def read_tsv(f: pathlib.Path) -> List[TSVEntry]:
 
 def write_tsv(f: pathlib.Path, values: List[TSVEntry]):
     with open(f, 'wb') as fp:
-        data = '\n'.join(map(TSVEntry.to_tsv, values)).encode('utf8')
+        data = '\t'.join(values[0].values.keys()) + '\n'
+        data += '\n'.join(map(TSVEntry.to_tsv, values))
+        data = data.encode('utf8')
         f.write_bytes(data)
