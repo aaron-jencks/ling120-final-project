@@ -187,63 +187,68 @@ if __name__ == '__main__':
     #
     # write_tsv(args.tsv_file, values)
 
-    skips = set()
+    # skips = set()
     removes = []
-    for v in tqdm(values, desc='Updating missing IPA values'):
-        m = re.findall(r'[a-zA-Z\-\']+\*', v['ipa'])
-        for mt in m:
-            if mt in skips:
-                removes.append(v)
-                break
+    # for v in tqdm(values, desc='Updating missing IPA values'):
+    #     m = re.findall(r'[a-zA-Z\-\']+\*', v['ipa'])
+    #     for mt in m:
+    #         if mt in skips:
+    #             removes.append(v)
+    #             break
+    #
+    #         skip_entry = False
+    #         while True:
+    #             replacement = input('\nWhat is the IPA for {} from \n\t"{}"\n\t"{}"\n? '
+    #                                 '(type stop to stop, or save to save, or skip to remove) '.format(mt,
+    #                                                                                                   v['sentence'],
+    #                                                                                                   v['ipa']))
+    #             if replacement.lower() == 'stop':
+    #                 print('Stopping here for now', file=sys.stderr)
+    #                 for r in removes:
+    #                     values.remove(r)
+    #                 write_tsv(args.tsv_file, values)
+    #                 errors = 0
+    #                 for vt in values:
+    #                     if re.search(r'[a-zA-Z\-\']+\*', vt['ipa']) is not None:
+    #                         errors += 1
+    #                 print('There are at least {} errors left'.format(errors), file=sys.stderr)
+    #                 exit(0)
+    #             elif replacement.lower() == 'save':
+    #                 print('Saving current changes', file=sys.stderr)
+    #                 nvalues = values[:]
+    #                 for r in removes:
+    #                     nvalues.remove(r)
+    #                 write_tsv(args.tsv_file, nvalues)
+    #                 errors = 0
+    #                 for vt in nvalues:
+    #                     if re.search(r'[a-zA-Z\-\']+\*', vt['ipa']) is not None:
+    #                         errors += 1
+    #                 print('There are at least {} errors left'.format(errors), file=sys.stderr)
+    #                 continue
+    #             elif replacement.lower() == 'skip':
+    #                 removes.append(v)
+    #                 skips.add(mt)
+    #                 skip_entry = True
+    #
+    #             break
+    #
+    #         if skip_entry:
+    #             break
+    #
+    #         v['ipa'] = v['ipa'].replace(mt, replacement)
 
-            skip_entry = False
-            while True:
-                replacement = input('\nWhat is the IPA for {} from \n\t"{}"\n\t"{}"\n? '
-                                    '(type stop to stop, or save to save, or skip to remove) '.format(mt,
-                                                                                                      v['sentence'],
-                                                                                                      v['ipa']))
-                if replacement.lower() == 'stop':
-                    print('Stopping here for now', file=sys.stderr)
-                    for r in removes:
-                        values.remove(r)
-                    write_tsv(args.tsv_file, values)
-                    errors = 0
-                    for vt in values:
-                        if re.search(r'[a-zA-Z\-\']+\*', vt['ipa']) is not None:
-                            errors += 1
-                    print('There are at least {} errors left'.format(errors), file=sys.stderr)
-                    exit(0)
-                elif replacement.lower() == 'save':
-                    print('Saving current changes', file=sys.stderr)
-                    nvalues = values[:]
-                    for r in removes:
-                        nvalues.remove(r)
-                    write_tsv(args.tsv_file, nvalues)
-                    errors = 0
-                    for vt in nvalues:
-                        if re.search(r'[a-zA-Z\-\']+\*', vt['ipa']) is not None:
-                            errors += 1
-                    print('There are at least {} errors left'.format(errors), file=sys.stderr)
-                    continue
-                elif replacement.lower() == 'skip':
-                    removes.append(v)
-                    skips.add(mt)
-                    skip_entry = True
+    new_values = []
+    for v in tqdm(values, desc='Filtering remaining missing translations'):
+        if '*' not in v['ipa']:
+            new_values.append(v)
 
-                break
-
-            if skip_entry:
-                break
-
-            v['ipa'] = v['ipa'].replace(mt, replacement)
-
-    for r in removes:
-        values.remove(r)
+    # for r in tqdm(removes, desc='Removing missing values'):
+    #     values.remove(r)
 
     write_tsv(args.tsv_file, values)
 
-    app = QApplication(sys.argv)
-    v = MainWindow(values, args.tsv_file)
-    v.show()
-    app.exec()
+    # app = QApplication(sys.argv)
+    # v = MainWindow(values, args.tsv_file)
+    # v.show()
+    # app.exec()
 

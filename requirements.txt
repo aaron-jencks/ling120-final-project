@@ -3,3 +3,4 @@ pytorch
 tqdm~=4.63.0
 scikit-learn
 pyqt
+librosa
