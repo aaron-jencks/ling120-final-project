@@ -76,3 +76,4 @@ Valardo, Valerio, "Sound Generation with Deep Learning || Approaches and Challen
 [3]: https://youtu.be/pwV8K9wXY2E
 [4]: https://en.wikipedia.org/wiki/Speech_synthesis#Synthesizer_technologies
 [5]: https://en.wikipedia.org/wiki/Speech_synthesis
+[6]: https://librosa.org/doc/latest/index.html
