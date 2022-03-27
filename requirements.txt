@@ -6,3 +6,4 @@ pyqt
 librosa
 matplotlib
 soundfile
+pyfoal
