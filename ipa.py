@@ -16,6 +16,7 @@ import os
 from queue import Full, Empty
 
 from tsv import read_tsv, write_tsv, TSVEntry
+from mp_util import round_robin_map
 
 
 class SentenceWidget(QWidget):
@@ -97,15 +98,9 @@ class MainWindow(QWidget):
         self.generate_next_set()
 
 
-def insert_tsv_ipa(pin: Queue, pout: Queue):
-    while True:
-        pkt = pin.get()
-        if pkt:
-            if isinstance(pkt, TSVEntry):
-                pkt['ipa'] = ipa.convert(pkt['sentence'])
-                pout.put(pkt)
-        else:
-            break
+def insert_tsv_ipa(e: TSVEntry) -> TSVEntry:
+    e['ipa'] = ipa.convert(e['sentence'])
+    return e
 
 
 if __name__ == '__main__':
@@ -119,73 +114,24 @@ if __name__ == '__main__':
     values = read_tsv(args.tsv_file)
 
     if not all(map(lambda x: 'ipa' in x, tqdm(values, desc="Checking for IPA column"))):
-        result = []
-        ccount = os.cpu_count()
+        values = round_robin_map(values, insert_tsv_ipa, args.batch_size, 'Converting sentences to IPA')
+        write_tsv(args.tsv_file, values)
 
-        procout = Queue(ccount * args.batch_size)
+    for v in tqdm(values, desc='Updating hyphenated IPA values'):
+        m = re.findall(r'[a-zA-Z]+-[a-zA-Z\-\']+\*', v['ipa'])
+        for mt in m:
+            replacement = ''
+            if '-' in mt:
+                segs = mt.split('-')
+                ipas = []
+                for seg in segs:
+                    ipas.append(ipa.convert(seg.replace('*', '')))
+                replacement = '.'.join(ipas)
 
-        print('Creating processors', file=sys.stderr)
-        processors = []
-        pipes = []
-        for _ in range(ccount):
-            i = Queue(args.batch_size)
-            processors.append(mp.Process(target=insert_tsv_ipa, args=(i, procout)))
-            pipes.append(i)
-            processors[-1].start()
+            if len(replacement) > 0 and '*' not in replacement:
+                v['ipa'] = v['ipa'].replace(mt, replacement)
 
-        ecount = len(values)
-        new_values = []
-        pbar = tqdm(total=len(values), desc="Converting sentences to IPA")
-        keep_going = True
-        while keep_going:
-            try:
-                while True:
-                    resp = procout.get_nowait()
-                    pbar.update(1)
-                    new_values.append(resp)
-                    if len(new_values) == ecount:
-                        keep_going = False
-                        break
-            except Empty:
-                pass
-
-            for proc in range(len(processors)):
-                for _ in range(args.batch_size):
-                    if len(values) > 0:
-                        v = values.pop(-1)
-                        try:
-                            pipes[proc].put_nowait(v)
-                        except Full:
-                            values.append(v)
-                            break
-                    else:
-                        break
-
-        for proc in pipes:
-            proc.put(False)
-            proc.close()
-
-        for proc in processors:
-            proc.join()
-
-        write_tsv(args.tsv_file, new_values)
-        values = new_values
-
-    # for v in tqdm(values, desc='Updating hyphenated IPA values'):
-    #     m = re.findall(r'[a-zA-Z]+-[a-zA-Z\-\']+\*', v['ipa'])
-    #     for mt in m:
-    #         replacement = ''
-    #         if '-' in mt:
-    #             segs = mt.split('-')
-    #             ipas = []
-    #             for seg in segs:
-    #                 ipas.append(ipa.convert(seg.replace('*', '')))
-    #             replacement = '.'.join(ipas)
-    #
-    #         if len(replacement) > 0 and '*' not in replacement:
-    #             v['ipa'] = v['ipa'].replace(mt, replacement)
-    #
-    # write_tsv(args.tsv_file, values)
+    write_tsv(args.tsv_file, values)
 
     # skips = set()
     removes = []
@@ -245,7 +191,7 @@ if __name__ == '__main__':
     # for r in tqdm(removes, desc='Removing missing values'):
     #     values.remove(r)
 
-    write_tsv(args.tsv_file, values)
+    write_tsv(args.tsv_file, new_values)
 
     # app = QApplication(sys.argv)
     # v = MainWindow(values, args.tsv_file)

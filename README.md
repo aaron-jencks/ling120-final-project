@@ -49,10 +49,34 @@ the sound data. For training an autoencoder, it is actually pretty ingenious, au
 and the output is expected to be the same, this forces the model to figure out how to compress data losslessly.
 ([Valardo][2])
 
+## Hidden Markov Models
+
+One common way that people find to process speech is with the use of Hidden Markov Models (HMM).
+Specifically in the interest of this project, I'm looking at them for forced phoneme alignment. ([Jiahong][7])
+
+> Hidden Markov models (HMMs), named after the Russian mathematician Andrey Andreyevich Markov, 
+> who developed much of relevant statistical theory, are introduced and studied in the early 1970s. 
+> They were first used in speech recognition and have been successfully applied to the 
+> analysis of biological sequences since late 1980s. Nowadays, they are considered as a specific form of dynamic 
+> Bayesian networks, which are based on the theory of Bayes.
+> ([Franzese][8])
+
 ## Proposed Methodology
 
-My novel methodology in this experiment will try to use raw speech data instead of spectrograms on the output side of 
-an autoencoder to see if I can make it sound more human than the current state of the art.
+I would like to propose a novel solution for speech synthesis that makes use of raw audio instead of spectrograms.
+This will allow the models to learn nuances of speech that have been previously unavailable. To train the model,
+[Mozilla's Common Voice][1] speech dataset was used.
+
+### Preprocessing
+
+In order to make the dataset easier to train with, phonemic information was applied to the dataset. This consisted of
+two things:
+
+1. The python package `eng-to-ipa` was used to add a column to the common voice dataset containing the IPA of each sentence.
+2. A combination of [`librosa`][6] and `soundfile` were then used to trim empty audio data off and convert to WAV files.
+3. [Penn's p2FA][7] was used to forcibly align the audio with phoneme markup.
+
+### Training Phoneme Generation
 
 ## Usage
 ### [ipa.py](./ipa.py)
@@ -64,6 +88,10 @@ python ipa.py "path to tsv file" [--batch_size=256]
 In this example, `batch_size` is the number of entries that are queued up at each process once the task is split.
 
 ## Works Cited
+
+Franzese, Monica. “Hidden Markov Models.” Encyclopedia of Bioinformatics and Computational Biology, edited by Antonalla Luliano, Elsevier Inc., 2019. 
+
+Jiahong Yuan and Mark Liberman. 2008. Speaker identification on the SCOTUS corpus. Proceedings of Acoustics '08.
 
 “Speech Synthesis.” *Wikipedia*, Wikimedia Foundation, 12 Mar. 2022, [https://en.wikipedia.org/wiki/Speech_synthesis][5]. 
 
@@ -77,3 +105,5 @@ Valardo, Valerio, "Sound Generation with Deep Learning || Approaches and Challen
 [4]: https://en.wikipedia.org/wiki/Speech_synthesis#Synthesizer_technologies
 [5]: https://en.wikipedia.org/wiki/Speech_synthesis
 [6]: https://librosa.org/doc/latest/index.html
+[7]: https://babel.ling.upenn.edu/phonetics/old_website_2015/p2fa/index.html
+[8]: https://www.sciencedirect.com/topics/medicine-and-dentistry/hidden-markov-model
