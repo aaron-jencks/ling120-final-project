@@ -17,6 +17,7 @@ class RecordingSample:
         self.entry = e
         self.location = loc / e['path']
         self.output_location = loc / (e['path'].split('.')[0] + '.wav')
+        self.alignment_location = loc / (e['path'].split('.')[0] + '.json')
 
 
 def rec_trim_empty_space(v: RecordingSample):
@@ -37,6 +38,13 @@ def rec_trim_empty_space(v: RecordingSample):
     return True
 
 
+def rec_create_forced_alignment(v: RecordingSample):
+    w, sr = librosa.load(v.location, mono=True)
+    alignment = pyfoal.align(v.entry['sentence'], w, sr)
+    alignment.save_json(v.alignment_location)
+    return True
+
+
 def trim_empty_space(values: List[TSVEntry], recording_locations: pathlib.Path):
     round_robin_map(list(map(lambda x: RecordingSample(x, recording_locations),
                              tqdm(values, desc='Creating output file locations'))), rec_trim_empty_space,
@@ -44,7 +52,9 @@ def trim_empty_space(values: List[TSVEntry], recording_locations: pathlib.Path):
 
 
 def create_phoneme_alignment(values: List[TSVEntry], recording_location: pathlib.Path):
-    pass
+    round_robin_map(list(map(lambda x: RecordingSample(x, recording_location),
+                             tqdm(values, desc='Creating output file locations'))), rec_create_forced_alignment,
+                    1024, 'Creating Forced Alignments')
 
 
 if __name__ == '__main__':
@@ -57,3 +67,5 @@ if __name__ == '__main__':
     records = read_tsv(args.tsv_file)
     if args.trim:
         trim_empty_space(records, args.clips_dir)
+
+    create_phoneme_alignment(records, args.clips_dir)
