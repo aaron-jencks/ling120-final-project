@@ -1,22 +1,16 @@
 import argparse
 import pathlib
 import random
-import sys
 from typing import List
 import re
 
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton, QApplication, \
-    QInputDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton, QInputDialog
 from tqdm import tqdm
 import eng_to_ipa as ipa
-import multiprocessing as mp
-from multiprocessing import Queue
-import os
-from queue import Full, Empty
 
-from tsv import read_tsv, write_tsv, TSVEntry
-from mp_util import round_robin_map
+from utils.tsv import read_tsv, write_tsv, TSVEntry
+from utils.mp_util import round_robin_map
 
 
 class SentenceWidget(QWidget):

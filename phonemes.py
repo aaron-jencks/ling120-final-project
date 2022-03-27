@@ -3,16 +3,14 @@ from typing import List
 import argparse
 import os
 
-import matplotlib.pyplot as plt
 import librosa
 import soundfile as sf
 from tqdm import tqdm
 import pyfoal
-import numpy as np
 
-from tsv import TSVEntry, read_tsv
-from mp_util import round_robin_map
-from sound_util import seconds_to_index
+from utils.tsv import TSVEntry, read_tsv
+from utils.mp_util import round_robin_map
+from utils.sound_util import seconds_to_index
 
 
 class Phoneme:
@@ -80,7 +78,7 @@ def rec_create_forced_alignment(v: RecordingSample):
         psubdir = pdir / p.name
         if not psubdir.exists():
             os.mkdir(psubdir)
-            
+
         sf.write(psubdir / (v.base_filename + '_{}.wav'.format(pi)), w[p.start_index:p.stop_index], sr)
 
     return True
