@@ -75,6 +75,7 @@ two things:
 1. The python package `eng-to-ipa` was used to add a column to the common voice dataset containing the IPA of each sentence.
 2. A combination of [`librosa`][6] and `soundfile` were then used to trim empty audio data off and convert to WAV files.
 3. [Penn's p2FA][7] was used to forcibly align the audio with phoneme markup.
+4. These forced alignments were broken into their phonemes, and then each phoneme was stored in a directory of the same phonemes for training.
 
 ### Training Phoneme Generation
 

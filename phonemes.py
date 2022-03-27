@@ -1,23 +1,51 @@
 import pathlib
 from typing import List
 import argparse
+import os
 
 import matplotlib.pyplot as plt
 import librosa
 import soundfile as sf
 from tqdm import tqdm
 import pyfoal
+import numpy as np
 
 from tsv import TSVEntry, read_tsv
 from mp_util import round_robin_map
+from sound_util import seconds_to_index
+
+
+class Phoneme:
+    def __init__(self, name: str, start: float, stop: float, sample_rate: int, file_length: int):
+        self.name = name
+        self.start = start
+        self.stop = stop
+        self.sample_rate = sample_rate
+        self.file_length = file_length
+
+    @property
+    def start_index(self) -> int:
+        i = seconds_to_index(self.start, self.sample_rate)
+        if i >= self.file_length:
+            i -= 1
+        return i
+
+    @property
+    def stop_index(self) -> int:
+        i = seconds_to_index(self.stop, self.sample_rate)
+        if i >= self.file_length:
+            i -= 1
+        return i
 
 
 class RecordingSample:
     def __init__(self, e: TSVEntry, loc: pathlib.Path):
         self.entry = e
+        self.directory = loc
+        self.base_filename = e['path'].split('.')[0]
         self.location = loc / e['path']
-        self.output_location = loc / (e['path'].split('.')[0] + '.wav')
-        self.alignment_location = loc / (e['path'].split('.')[0] + '.json')
+        self.output_location = loc / (self.base_filename + '.wav')
+        self.alignment_location = loc / (self.base_filename + '.json')
 
 
 def rec_trim_empty_space(v: RecordingSample):
@@ -42,6 +70,19 @@ def rec_create_forced_alignment(v: RecordingSample):
     w, sr = librosa.load(v.location, mono=True)
     alignment = pyfoal.align(v.entry['sentence'], w, sr)
     alignment.save_json(v.alignment_location)
+    phonemes = [Phoneme(p.phoneme, p.start(), p.end(), sr, len(w)) for p in alignment.phonemes()]
+    pdir = v.directory / 'phonemes'
+
+    if not pdir.exists():
+        os.mkdir(pdir)
+
+    for pi, p in enumerate(phonemes):
+        psubdir = pdir / p.name
+        if not psubdir.exists():
+            os.mkdir(psubdir)
+            
+        sf.write(psubdir / (v.base_filename + '_{}.wav'.format(pi)), w[p.start_index:p.stop_index], sr)
+
     return True
 
 
