@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import librosa
 import soundfile as sf
 from tqdm import tqdm
+import pyfoal
 
 from tsv import TSVEntry, read_tsv
 from mp_util import round_robin_map
@@ -40,11 +41,10 @@ def trim_empty_space(values: List[TSVEntry], recording_locations: pathlib.Path):
     round_robin_map(list(map(lambda x: RecordingSample(x, recording_locations),
                              tqdm(values, desc='Creating output file locations'))), rec_trim_empty_space,
                     1024, 'Trimming empty space')
-    # values = list(map(lambda x: RecordingSample(x, recording_locations),
-    #                   tqdm(values, desc='Creating output file locations')))
-    # waves = []
-    # for v in tqdm(values, desc='Reading in mp3s'):
-    #     waves.append(librosa.load(v.location, mono=True))
+
+
+def create_phoneme_alignment(values: List[TSVEntry], recording_location: pathlib.Path):
+    pass
 
 
 if __name__ == '__main__':
