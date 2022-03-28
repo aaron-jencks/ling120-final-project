@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    model_dict = torch.load(args.model_location)
+    model_dict = torch.load(args.model_location, map_location=device)
     model: GeneralPerceptron = model_dict['model']
     model.eval()
 

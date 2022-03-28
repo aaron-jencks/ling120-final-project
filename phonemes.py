@@ -96,6 +96,13 @@ def create_phoneme_alignment(values: List[TSVEntry], recording_location: pathlib
                     1024, 'Creating Forced Alignments')
 
 
+def create_text_files(values: List[TSVEntry], recording_location: pathlib.Path):
+    for v in tqdm(values, desc='Generating text files for pyfoal'):
+        fname = v['path'].split('.')[0]
+        with open(recording_location / (fname + '_text.txt'), 'w+') as fp:
+            fp.write(v['sentence'])
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Processes the phonemes for the audio files')
     parser.add_argument('tsv_file', type=pathlib.Path, help='The file containing the list of sample file locations')
