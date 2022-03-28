@@ -11,6 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from typing import List
 import argparse
 import os
+import librosa
 
 from utils.tsv import read_tsv
 
@@ -19,10 +20,11 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class AudioDataset(Dataset):
-    def __init__(self, tsv_file: pathlib.Path, clip_dir: pathlib.Path, phoneme_dir: pathlib.Path):
+    def __init__(self, tsv_file: pathlib.Path, clip_dir: pathlib.Path, phoneme_dir: pathlib.Path, output_size: int):
         self.tsv = read_tsv(tsv_file)
         self.clips = clip_dir
         self.phonemes = phoneme_dir
+        self.padding_size = output_size
 
         phones = []
         for root, dirs, files in os.walk(self.phonemes):
@@ -54,8 +56,7 @@ class AudioDataset(Dataset):
             item = [item]
 
         result = []
-        files = []
-        indices = []
+        waveforms = []
         for it in item:
             for j in self.indices:
                 if it < j:
@@ -67,6 +68,13 @@ class AudioDataset(Dataset):
                     for w in alignment['words']:
                         for name, _, _ in w['phonemes']:
                             phonemes.append(name)
+
+                    w, sr = librosa.load(self.phonemes / phonemes[it] / (fname + '_{}.wav'.format(it)), mono=True)
+                    if len(w) < self.padding_size:
+                        diff = self.padding_size - len(w)
+                        w = np.pad(w, (0, diff), 'constant', constant_values=(0, 0))
+                    waveforms.append(w)
+
                     phonemes = self.enc.transform(phonemes)
                     if it == 0:
                         result.append([self.space, phonemes[it], phonemes[it + 1]])
@@ -74,15 +82,14 @@ class AudioDataset(Dataset):
                         result.append([phonemes[it - 1], phonemes[it], self.space])
                     else:
                         result.append([phonemes[it - 1], phonemes[it], phonemes[it + 1]])
-                    files.append(fname)
-                    indices.append(it)
                     break
                 it -= j
 
         result = np.array(result).astype('float')
-        sample = {'file': files, 'index': indices, 'phonemes': result}
+        waveforms = np.array(waveforms, 'float')
+        sample = {'phonemes': torch.from_numpy(result), 'waveforms': torch.from_numpy(waveforms)}
 
-        return sample
+        return sample['ohonemes'], sample['waveforms']
 
 
 class GeneralPerceptron(torch.nn.Module):
@@ -120,7 +127,7 @@ class GeneralPerceptron(torch.nn.Module):
             current = self.initialized_activation(current)
         current = self.layers[-1](current)
         # print(current.shape)
-        current = self.initialized_activation(current)
+        # current = self.initialized_activation(current)
         # print(current.shape)
         return current
 
@@ -164,32 +171,35 @@ def test_loop(dataloader, model, loss_fn):
     return test_loss
 
 
-def test_model(layers: int, size: int, dropout: bool, epochs: int = 10) -> float:
-    # Version 1 (No Gradient Boosting)
-    model = GeneralPerceptron(len(features), len(output_count), layers, [size] * layers, dropout).to(device)
-    # Version 2 (Gradient Boosting)
-    # model = GradientBoostingClassifier(model, 10, cuda=torch.cuda.is_available())
-    # model.set_optimizer('SGD', lr=0.0001)
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-
-    loss = train_loop(torch.utils.data.DataLoader(tensor_train, batch_size=256), model, criterion, optimizer)
-    i = 0
-    while loss > 1 and i < epochs:
-        print('{}x{}: Training iteration {}, Loss {}'.format(layers, size, i, loss))
-        loss = train_loop(torch.utils.data.DataLoader(tensor_train, batch_size=256), model, criterion, optimizer)
-        print('Training Error: {}'.format(loss))
-        i += 1
-
-    return test_loop(torch.utils.data.DataLoader(tensor_test, batch_size=256), model, criterion)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Trainer for Phoneme Generation')
     parser.add_argument('tsv_file', type=pathlib.Path, help='The TSV file to train from')
     parser.add_argument('clip_dir', type=pathlib.Path, help='The location of the .wav files')
     parser.add_argument('phoneme_dir', type=pathlib.Path,
                         help='The location of the subdirectories of the phoneme clips')
+    parser.add_argument('--layer_count', type=int, default=5, help='Number of layers to use in the MLP')
+    parser.add_argument('--layer_size', type=int, default=100, help='Number of neurons in the layers to use in the MLP')
+    parser.add_argument('--learning_rate', type=float, default=0.01, help='The learning rate')
+    parser.add_argument('--batch_size', type=int, default=256, help='The batch size for the data loader')
+    parser.add_argument('--epochs', type=int, default=10, help='The number of epochs for training')
 
     args = parser.parse_args()
     dataset = AudioDataset(args.tsv_file, args.clip_dir, args.phoneme_dir)
+
+    # Version 1 (No Gradient Boosting)
+    model = GeneralPerceptron(3, -1, args.layer_count, [args.layer_size] * args.layer_count, True).to(device)
+    # Version 2 (Gradient Boosting)
+    # model = GradientBoostingClassifier(model, 10, cuda=torch.cuda.is_available())
+    # model.set_optimizer('SGD', lr=0.0001)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
+
+    loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
+    i = 0
+    while loss > 1 and i < args.epochs:
+        print('{}x{}: Training iteration {}, Loss {}'.format(args.layer_count, args.layer_size, i, loss))
+        loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
+        print('Training Error: {}'.format(loss))
+        i += 1
+
+    print(test_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion))
