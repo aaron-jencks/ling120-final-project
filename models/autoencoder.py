@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=10, help='The number of epochs for training')
     parser.add_argument('--wave_size', type=int, default=-1,
                         help='The output size of the waveform, for if you\'ve ran this before.')
-    parser.add_argument('--output', type=pathlib.Path, default=pathlib.Path('../phoneme_model.sav'),
+    parser.add_argument('--output', type=pathlib.Path, default=pathlib.Path('../encoder_model.sav'),
                         help='The file that you would like to save your model in')
 
     args = parser.parse_args()
