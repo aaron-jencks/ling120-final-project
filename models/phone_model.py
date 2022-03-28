@@ -7,7 +7,7 @@ import argparse
 import os
 import librosa
 
-from models.dataset import AudioDataset
+from models.dataset import AudioDataset, find_largest_waveform_size
 from models.generic_model import GeneralPerceptron, train_loop, test_loop
 
 
@@ -35,13 +35,7 @@ if __name__ == '__main__':
 
     # Determine the largest waveform size
     if args.wave_size < 0:
-        sizes = []
-        for root, dirs, files in tqdm(os.walk(args.phoneme_dir), desc='Finding largest waveform size'):
-            for f in files:
-                if f.split('.')[1] == 'wav':
-                    w, _ = librosa.load(pathlib.Path(root) / f, mono=True)
-                    sizes.append(len(w))
-        max_output_size = max(sizes)
+        max_output_size = find_largest_waveform_size(args.phoneme_dir)
     else:
         max_output_size = args.wave_size
 

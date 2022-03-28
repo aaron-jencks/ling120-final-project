@@ -7,7 +7,7 @@ import argparse
 import os
 import librosa
 
-from models.dataset import AudioDataset
+from models.dataset import AudioEncoderDataset, find_largest_waveform_size
 from models.generic_model import GeneralPerceptron, train_loop, test_loop
 
 
@@ -35,20 +35,15 @@ if __name__ == '__main__':
 
     # Determine the largest waveform size
     if args.wave_size < 0:
-        sizes = []
-        for root, dirs, files in tqdm(os.walk(args.phoneme_dir), desc='Finding largest waveform size'):
-            for f in files:
-                if f.split('.')[1] == 'wav':
-                    w, _ = librosa.load(pathlib.Path(root) / f, mono=True)
-                    sizes.append(len(w))
-        max_output_size = max(sizes)
+        max_output_size = find_largest_waveform_size(args.phoneme_dir)
     else:
         max_output_size = args.wave_size
 
-    dataset = AudioDataset(args.tsv_file, args.clip_dir, args.phoneme_dir, max_output_size)
+    dataset = AudioEncoderDataset(args.tsv_file, args.clip_dir, args.phoneme_dir, max_output_size)
 
     # Version 1 (No Gradient Boosting)
-    model = GeneralPerceptron(3, max_output_size, args.layer_count, [args.layer_size] * args.layer_count, True).to(device)
+    model = GeneralPerceptron(max_output_size, max_output_size,
+                              args.layer_count, [args.layer_size] * args.layer_count, True).to(device)
     # Version 2 (Gradient Boosting)
     # model = GradientBoostingClassifier(model, 10, cuda=torch.cuda.is_available())
     # model.set_optimizer('SGD', lr=0.0001)

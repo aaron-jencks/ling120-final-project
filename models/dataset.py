@@ -7,11 +7,22 @@ import torch
 from torch.utils.data import Dataset
 import os
 import librosa
+from tqdm import tqdm
 
 from utils.tsv import read_tsv
 
 # logger = set_logger('running_data_boosting_classifier', use_tb_logger=True)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+
+def find_largest_waveform_size(phone_dir: pathlib.Path) -> int:
+    sizes = []
+    for root, dirs, files in tqdm(os.walk(phone_dir), desc='Finding largest waveform size'):
+        for f in files:
+            if f.split('.')[1] == 'wav':
+                w, _ = librosa.load(pathlib.Path(root) / f, mono=True)
+                sizes.append(len(w))
+    return max(sizes)
 
 
 class TSVAudioDataset(Dataset):
