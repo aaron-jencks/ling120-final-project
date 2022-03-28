@@ -1,22 +1,88 @@
+import json
+import pathlib
+
 from sklearn import preprocessing, utils
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import numpy as np
 from tqdm import tqdm
 import torch
+from torch.utils.data import Dataset, DataLoader
 from typing import List
+import argparse
+import os
+
+from utils.tsv import read_tsv
 
 # logger = set_logger('running_data_boosting_classifier', use_tb_logger=True)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-df = pd.read_csv('.\\elapsed_output.csv').dropna()
-print(list(df.columns))
-df.head()
-features = ['latitude', 'longitude', 'elevation', 'elapsed_time', 'distance_travelled', 'cumulative_distance', 'average_speed']
-X = df[features]
-y = preprocessing.LabelEncoder().fit_transform(df['pace_skewed'])
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+class AudioDataset(Dataset):
+    def __init__(self, tsv_file: pathlib.Path, clip_dir: pathlib.Path, phoneme_dir: pathlib.Path):
+        self.tsv = read_tsv(tsv_file)
+        self.clips = clip_dir
+        self.phonemes = phoneme_dir
+
+        phones = []
+        for root, dirs, files in os.walk(self.phonemes):
+            for d in dirs:
+                phones.append(d)
+            break
+
+        self.enc = preprocessing.LabelEncoder().fit(phones)
+        self.space = self.enc.transform(['sp'])[0]
+
+        self.indices = []
+        for e in self.tsv:
+            phonemes = []
+            fname = e['path'].split('.')[0]
+            with open(self.clips / (fname + '.json'), 'r') as fp:
+                alignment = json.load(fp)
+            for w in alignment['words']:
+                for name, _, _ in w['phonemes']:
+                    phonemes.append(name)
+            self.indices.append(len(phonemes))
+
+    def __len__(self):
+        return sum(self.indices)
+
+    def __getitem__(self, item):
+        if torch.is_tensor(item):
+            item = item.tolist()
+        if isinstance(item, int):
+            item = [item]
+
+        result = []
+        files = []
+        indices = []
+        for it in item:
+            for j in self.indices:
+                if it < j:
+                    e = self.tsv[j]
+                    phonemes = []
+                    fname = e['path'].split('.')[0]
+                    with open(self.clips / (fname + '.json'), 'r') as fp:
+                        alignment = json.load(fp)
+                    for w in alignment['words']:
+                        for name, _, _ in w['phonemes']:
+                            phonemes.append(name)
+                    phonemes = self.enc.transform(phonemes)
+                    if it == 0:
+                        result.append([self.space, phonemes[it], phonemes[it + 1]])
+                    elif it == j - 1:
+                        result.append([phonemes[it - 1], phonemes[it], self.space])
+                    else:
+                        result.append([phonemes[it - 1], phonemes[it], phonemes[it + 1]])
+                    files.append(fname)
+                    indices.append(it)
+                    break
+                it -= j
+
+        result = np.array(result).astype('float')
+        sample = {'file': files, 'index': indices, 'phonemes': result}
+
+        return sample
 
 
 class GeneralPerceptron(torch.nn.Module):
@@ -98,16 +164,6 @@ def test_loop(dataloader, model, loss_fn):
     return test_loss
 
 
-output_count = np.unique(y)
-print(output_count)
-tensor_train = torch.utils.data.TensorDataset(torch.from_numpy(X_train.to_numpy().astype(np.single)).to(device),
-                                              torch.tensor(y_train, dtype=torch.long).to(device))
-tensor_test = torch.utils.data.TensorDataset(torch.from_numpy(X_test.to_numpy().astype(np.single)).to(device),
-                                             torch.tensor(y_test.astype(np.int), dtype=torch.long).to(device))
-tensor_train.classes = output_count
-tensor_test.classes = output_count
-
-
 def test_model(layers: int, size: int, dropout: bool, epochs: int = 10) -> float:
     # Version 1 (No Gradient Boosting)
     model = GeneralPerceptron(len(features), len(output_count), layers, [size] * layers, dropout).to(device)
@@ -128,4 +184,12 @@ def test_model(layers: int, size: int, dropout: bool, epochs: int = 10) -> float
     return test_loop(torch.utils.data.DataLoader(tensor_test, batch_size=256), model, criterion)
 
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Model Trainer for Phoneme Generation')
+    parser.add_argument('tsv_file', type=pathlib.Path, help='The TSV file to train from')
+    parser.add_argument('clip_dir', type=pathlib.Path, help='The location of the .wav files')
+    parser.add_argument('phoneme_dir', type=pathlib.Path,
+                        help='The location of the subdirectories of the phoneme clips')
 
+    args = parser.parse_args()
+    dataset = AudioDataset(args.tsv_file, args.clip_dir, args.phoneme_dir)
