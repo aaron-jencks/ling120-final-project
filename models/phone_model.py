@@ -1,11 +1,8 @@
 import pathlib
 
-from tqdm import tqdm
 import torch
 from torch.utils.data import Dataset
 import argparse
-import os
-import librosa
 
 from models.dataset import AudioDataset, find_largest_waveform_size
 from models.generic_model import GeneralPerceptron, train_loop, test_loop
@@ -42,7 +39,8 @@ if __name__ == '__main__':
     dataset = AudioDataset(args.tsv_file, args.clip_dir, args.phoneme_dir, max_output_size)
 
     # Version 1 (No Gradient Boosting)
-    model = GeneralPerceptron(3, max_output_size, args.layer_count, [args.layer_size] * args.layer_count, True).to(device)
+    model = GeneralPerceptron(3, max_output_size, args.layer_count,
+                              [args.layer_size] * args.layer_count, True).to(device)
     # Version 2 (Gradient Boosting)
     # model = GradientBoostingClassifier(model, 10, cuda=torch.cuda.is_available())
     # model.set_optimizer('SGD', lr=0.0001)

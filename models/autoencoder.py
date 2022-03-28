@@ -1,11 +1,8 @@
 import pathlib
 
-from tqdm import tqdm
 import torch
 from torch.utils.data import Dataset
 import argparse
-import os
-import librosa
 
 from models.dataset import AudioEncoderDataset, find_largest_waveform_size
 from models.generic_model import GeneralPerceptron, train_loop, test_loop
