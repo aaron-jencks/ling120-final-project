@@ -2,12 +2,11 @@ import argparse
 import pathlib
 
 import torch
-import pyfoal
 import numpy as np
 import sounddevice as sd
 from tqdm import tqdm
 
-from phone_model import GeneralPerceptron
+from models.phone_model import GeneralPerceptron
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 sd.default.samplerate = 22050  # Default for librosa
@@ -15,7 +14,7 @@ sd.default.samplerate = 22050  # Default for librosa
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Trainer for Phoneme Generation')
-    parser.add_argument('--model_location', type=pathlib.Path, default=pathlib.Path('./phoneme_model.sav'),
+    parser.add_argument('--model_location', type=pathlib.Path, default=pathlib.Path('phoneme_model.sav'),
                         help='The file where your model is located')
 
     args = parser.parse_args()
