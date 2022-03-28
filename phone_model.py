@@ -213,7 +213,7 @@ if __name__ == '__main__':
 
     loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
     i = 0
-    while loss > 1 and i < args.epochs:
+    while loss > 0.01 and i < args.epochs:
         print('{}x{}: Training iteration {}, Loss {}\n'.format(args.layer_count, args.layer_size, i, loss))
         loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
         print('Training Error: {}'.format(loss))
@@ -221,4 +221,4 @@ if __name__ == '__main__':
 
     print(test_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion))
 
-    torch.save(model, args.output)
+    torch.save({'model': model, 'encoder': dataset.enc}, args.output)
