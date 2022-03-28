@@ -9,8 +9,8 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel
 from tqdm import tqdm
 import eng_to_ipa as ipa
 
-from utils.tsv import read_tsv, write_tsv, TSVEntry
-from utils.mp_util import round_robin_map
+from src.utils.tsv import read_tsv, write_tsv, TSVEntry
+from src.utils import round_robin_map
 
 
 class SentenceWidget(QWidget):

@@ -6,7 +6,7 @@ import numpy as np
 import sounddevice as sd
 from tqdm import tqdm
 
-from models.phone_model import GeneralPerceptron
+from src.models import GeneralPerceptron
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 sd.default.samplerate = 22050  # Default for librosa

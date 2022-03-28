@@ -9,8 +9,8 @@ import os
 import librosa
 from tqdm import tqdm
 
-import settings
-from utils.tsv import read_tsv
+from .. import settings
+from ..utils.tsv import read_tsv
 
 # logger = set_logger('running_data_boosting_classifier', use_tb_logger=True)
 device = 'cuda' if torch.cuda.is_available() and settings.enable_gpu else 'cpu'

@@ -8,9 +8,9 @@ import soundfile as sf
 from tqdm import tqdm
 import pyfoal
 
-from utils.tsv import TSVEntry, read_tsv
-from utils.mp_util import round_robin_map
-from utils.sound_util import seconds_to_index
+from src.utils.tsv import TSVEntry, read_tsv
+from src.utils.mp_util import round_robin_map
+from src.utils.sound_util import seconds_to_index
 
 
 class Phoneme:
