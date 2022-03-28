@@ -9,10 +9,11 @@ import os
 import librosa
 from tqdm import tqdm
 
+import settings
 from utils.tsv import read_tsv
 
 # logger = set_logger('running_data_boosting_classifier', use_tb_logger=True)
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda' if torch.cuda.is_available() and settings.enable_gpu else 'cpu'
 
 
 def find_largest_waveform_size(phone_dir: pathlib.Path) -> int:
@@ -126,8 +127,9 @@ class AudioEncoderDataset(TSVAudioDataset):
                         diff = self.padding_size - len(w)
                         w = np.pad(w, (0, diff), 'constant', constant_values=(0, 0))
                     waveforms.append(w)
+                    break
                 it -= j
 
         waveforms = np.squeeze(np.array(waveforms, 'double'))
 
-        return waveforms, waveforms
+        return torch.from_numpy(waveforms).to(device), torch.from_numpy(waveforms).to(device)

@@ -4,11 +4,12 @@ import torch
 from torch.utils.data import Dataset
 import argparse
 
+import settings
 from models.dataset import AudioEncoderDataset, find_largest_waveform_size
 from models.generic_model import GeneralPerceptron, train_loop, test_loop
 
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda' if torch.cuda.is_available() and settings.enable_gpu else 'cpu'
 
 
 if __name__ == '__main__':
@@ -17,8 +18,9 @@ if __name__ == '__main__':
     parser.add_argument('clip_dir', type=pathlib.Path, help='The location of the .wav files')
     parser.add_argument('phoneme_dir', type=pathlib.Path,
                         help='The location of the subdirectories of the phoneme clips')
-    parser.add_argument('--layer_count', type=int, default=5, help='Number of layers to use in the MLP')
-    parser.add_argument('--layer_size', type=int, default=100, help='Number of neurons in the layers to use in the MLP')
+    parser.add_argument('--layer_count', type=int, default=1, help='Number of layers to use in the MLP')
+    parser.add_argument('--layer_size', type=int, default=9000,
+                        help='Number of neurons in the layers to use in the MLP')
     parser.add_argument('--learning_rate', type=float, default=0.01, help='The learning rate')
     parser.add_argument('--batch_size', type=int, default=256, help='The batch size for the data loader')
     parser.add_argument('--epochs', type=int, default=10, help='The number of epochs for training')
@@ -36,11 +38,15 @@ if __name__ == '__main__':
     else:
         max_output_size = args.wave_size
 
+    print('The largest waveform size is {}'.format(max_output_size))
+
     dataset = AudioEncoderDataset(args.tsv_file, args.clip_dir, args.phoneme_dir, max_output_size)
 
     # Version 1 (No Gradient Boosting)
     model = GeneralPerceptron(max_output_size, max_output_size,
-                              args.layer_count, [args.layer_size] * args.layer_count, True).to(device)
+                              args.layer_count + 2,
+                              [args.layer_size << 1] + ([args.layer_size] * args.layer_count) + [args.layer_size << 1],
+                              False).to(device)
     # Version 2 (Gradient Boosting)
     # model = GradientBoostingClassifier(model, 10, cuda=torch.cuda.is_available())
     # model.set_optimizer('SGD', lr=0.0001)
