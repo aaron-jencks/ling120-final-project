@@ -58,9 +58,9 @@ class AudioDataset(Dataset):
         result = []
         waveforms = []
         for it in item:
-            for j in self.indices:
+            for i, j in enumerate(self.indices):
                 if it < j:
-                    e = self.tsv[j]
+                    e = self.tsv[i]
                     phonemes = []
                     fname = e['path'].split('.')[0]
                     with open(self.clips / (fname + '.json'), 'r') as fp:
@@ -85,11 +85,12 @@ class AudioDataset(Dataset):
                     break
                 it -= j
 
-        result = np.array(result).astype('float')
-        waveforms = np.array(waveforms, 'float')
-        sample = {'phonemes': torch.from_numpy(result), 'waveforms': torch.from_numpy(waveforms)}
+        result = np.squeeze(np.array(result).astype('double'))
+        waveforms = np.squeeze(np.array(waveforms, 'double'))
+        sample = {'phonemes': torch.from_numpy(result).to(device),
+                  'waveforms': torch.from_numpy(waveforms).to(device)}
 
-        return sample['ohonemes'], sample['waveforms']
+        return sample['phonemes'], sample['waveforms']
 
 
 class GeneralPerceptron(torch.nn.Module):
@@ -137,8 +138,8 @@ def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     for batch, (X, y) in enumerate(tqdm(dataloader)):
         # Compute prediction and loss
-        pred = model(X)
-        loss = loss_fn(pred, y)
+        pred = model(X.float())
+        loss = loss_fn(pred, y.float())
 
         # Backpropagation
         optimizer.zero_grad()
@@ -159,15 +160,13 @@ def test_loop(dataloader, model, loss_fn):
 
     with torch.no_grad():
         for X, y in tqdm(dataloader):
-            pred = model(X)
+            pred = model(X.float())
             #             print(pred.shape)
             #             print(pred)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+            test_loss += loss_fn(pred, y.float()).item()
 
     test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100 * correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    print(f"Test Error: \nAvg loss: {test_loss:>8f} \n")
     return test_loss
 
 
@@ -182,24 +181,44 @@ if __name__ == '__main__':
     parser.add_argument('--learning_rate', type=float, default=0.01, help='The learning rate')
     parser.add_argument('--batch_size', type=int, default=256, help='The batch size for the data loader')
     parser.add_argument('--epochs', type=int, default=10, help='The number of epochs for training')
+    parser.add_argument('--wave_size', type=int, default=-1,
+                        help='The output size of the waveform, for if you\'ve ran this before.')
+    parser.add_argument('--output', type=pathlib.Path, default=pathlib.Path('./phoneme_model.sav'),
+                        help='The file that you would like to save your model in')
 
     args = parser.parse_args()
-    dataset = AudioDataset(args.tsv_file, args.clip_dir, args.phoneme_dir)
+    print('Running on {}'.format(device))
+
+    # Determine the largest waveform size
+    if args.wave_size < 0:
+        sizes = []
+        for root, dirs, files in tqdm(os.walk(args.phoneme_dir), desc='Finding largest waveform size'):
+            for f in files:
+                if f.split('.')[1] == 'wav':
+                    w, _ = librosa.load(pathlib.Path(root) / f, mono=True)
+                    sizes.append(len(w))
+        max_output_size = max(sizes)
+    else:
+        max_output_size = args.wave_size
+
+    dataset = AudioDataset(args.tsv_file, args.clip_dir, args.phoneme_dir, max_output_size)
 
     # Version 1 (No Gradient Boosting)
-    model = GeneralPerceptron(3, -1, args.layer_count, [args.layer_size] * args.layer_count, True).to(device)
+    model = GeneralPerceptron(3, max_output_size, args.layer_count, [args.layer_size] * args.layer_count, True).to(device)
     # Version 2 (Gradient Boosting)
     # model = GradientBoostingClassifier(model, 10, cuda=torch.cuda.is_available())
     # model.set_optimizer('SGD', lr=0.0001)
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
 
     loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
     i = 0
     while loss > 1 and i < args.epochs:
-        print('{}x{}: Training iteration {}, Loss {}'.format(args.layer_count, args.layer_size, i, loss))
+        print('{}x{}: Training iteration {}, Loss {}\n'.format(args.layer_count, args.layer_size, i, loss))
         loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
         print('Training Error: {}'.format(loss))
         i += 1
 
     print(test_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion))
+
+    torch.save(model, args.output)
