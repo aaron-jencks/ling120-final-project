@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=10, help='The number of epochs for training')
     parser.add_argument('--wave_size', type=int, default=-1,
                         help='The output size of the waveform, for if you\'ve ran this before.')
-    parser.add_argument('--output', type=pathlib.Path, default=pathlib.Path('../encoder_model.sav'),
+    parser.add_argument('--output', type=pathlib.Path, default=pathlib.Path('./encoder_model.sav'),
                         help='The file that you would like to save your model in')
 
     args = parser.parse_args()
@@ -43,10 +43,14 @@ if __name__ == '__main__':
     dataset = AudioEncoderDataset(args.tsv_file, args.clip_dir, args.phoneme_dir, max_output_size)
 
     # Version 1 (No Gradient Boosting)
-    model = GeneralPerceptron(max_output_size, max_output_size,
-                              args.layer_count + 2,
-                              [args.layer_size << 1] + ([args.layer_size] * args.layer_count) + [args.layer_size << 1],
-                              False).to(device)
+    if not args.output.exists():
+        model = GeneralPerceptron(max_output_size, max_output_size,
+                                  args.layer_count,
+                                  [args.layer_size] * args.layer_count,
+                                  False).to(device)
+    else:
+        model = torch.load(args.output, map_location=device)['model']
+
     # Version 2 (Gradient Boosting)
     # model = GradientBoostingClassifier(model, 10, cuda=torch.cuda.is_available())
     # model.set_optimizer('SGD', lr=0.0001)
@@ -55,7 +59,7 @@ if __name__ == '__main__':
 
     loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
     i = 0
-    while loss > 0.01 and i < args.epochs:
+    while loss > 10 and i < args.epochs:
         print('{}x{}: Training iteration {}, Loss {}\n'.format(args.layer_count, args.layer_size, i, loss))
         loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
         print('Training Error: {}'.format(loss))

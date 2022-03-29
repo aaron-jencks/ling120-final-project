@@ -47,6 +47,8 @@ class GeneralPerceptron(torch.nn.Module):
 def train_loop(dataloader, model, loss_fn, optimizer):
     model.train()
     size = len(dataloader.dataset)
+    lerr = 0
+    lcount = 0
     for batch, (X, y) in enumerate(tqdm(dataloader)):
         # Compute prediction and loss
         pred = model(X.float())
@@ -57,10 +59,17 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
+        # Collects Percent Error
+        y = y.float()
+        perr = ((y - pred).abs() / y) * 100
+        perr = perr[~perr.isinf()]
+        lerr += (sum(perr) / len(perr)).cpu().detach().numpy()[0]
+        lcount += 1
+
     #         if batch % 100 == 0:
     #             loss, current = loss.item(), batch * len(X)
     #             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-    return loss.item()
+    return lerr / lcount
 
 
 def test_loop(dataloader, model, loss_fn):
