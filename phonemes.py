@@ -47,7 +47,7 @@ class RecordingSample:
 
 
 def rec_trim_empty_space(v: RecordingSample):
-    w, sr = librosa.load(v.location, mono=True)
+    w, sr = librosa.load(v.location if not v.output_location.exists() else v.output_location, mono=True)
     wi = 0
     for wi, wt in enumerate(w):
         if abs(wt) > 0.01:
