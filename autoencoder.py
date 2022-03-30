@@ -19,10 +19,10 @@ if __name__ == '__main__':
     parser.add_argument('phoneme_dir', type=pathlib.Path,
                         help='The location of the subdirectories of the phoneme clips')
     parser.add_argument('--layer_count', type=int, default=1, help='Number of layers to use in the MLP')
-    parser.add_argument('--layer_size', type=int, default=9000,
+    parser.add_argument('--layer_size', type=int, default=3000,
                         help='Number of neurons in the layers to use in the MLP')
     parser.add_argument('--learning_rate', type=float, default=0.01, help='The learning rate')
-    parser.add_argument('--batch_size', type=int, default=256, help='The batch size for the data loader')
+    parser.add_argument('--batch_size', type=int, default=32, help='The batch size for the data loader')
     parser.add_argument('--epochs', type=int, default=10, help='The number of epochs for training')
     parser.add_argument('--wave_size', type=int, default=-1,
                         help='The output size of the waveform, for if you\'ve ran this before.')
@@ -57,14 +57,17 @@ if __name__ == '__main__':
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate)
 
-    loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
+    loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size),  # , pin_memory=True),
+                      model, criterion, optimizer)
     i = 0
-    while loss > 10 and i < args.epochs:
+    while abs(loss) > 10 and i < args.epochs:
         print('{}x{}: Training iteration {}, Loss {}\n'.format(args.layer_count, args.layer_size, i, loss))
-        loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion, optimizer)
+        loss = train_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size),  # pin_memory=True),
+                          model, criterion, optimizer)
         print('Training Error: {}'.format(loss))
         i += 1
 
-    print(test_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size), model, criterion))
+    print(test_loop(torch.utils.data.DataLoader(dataset, batch_size=args.batch_size),  # pin_memory=True),
+                    model, criterion))
 
     torch.save({'model': model, 'encoder': dataset.enc}, args.output)

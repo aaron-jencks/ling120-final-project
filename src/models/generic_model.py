@@ -46,7 +46,6 @@ class GeneralPerceptron(torch.nn.Module):
 
 def train_loop(dataloader, model, loss_fn, optimizer):
     model.train()
-    size = len(dataloader.dataset)
     lerr = 0
     lcount = 0
     for batch, (X, y) in enumerate(tqdm(dataloader)):
@@ -62,8 +61,9 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         # Collects Percent Error
         y = y.float()
         perr = ((y - pred).abs() / y) * 100
-        perr = perr[~perr.isinf()]
-        lerr += (sum(perr) / len(perr)).cpu().detach().numpy()[0]
+        perr = perr[~(perr.isinf() | perr.isnan())]
+        terr = round(float((sum(perr) / len(perr)).cpu().detach().numpy()), 3)
+        lerr += terr
         lcount += 1
 
     #         if batch % 100 == 0:
@@ -77,6 +77,8 @@ def test_loop(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss, correct = 0, 0
+    lerr = 0
+    lcount = 0
 
     with torch.no_grad():
         for X, y in tqdm(dataloader):
@@ -85,6 +87,13 @@ def test_loop(dataloader, model, loss_fn):
             #             print(pred)
             test_loss += loss_fn(pred, y.float()).item()
 
-    test_loss /= num_batches
+            y = y.float()
+            perr = ((y - pred).abs() / y) * 100
+            perr = perr[~(perr.isinf() | perr.isnan())]
+            terr = round(float((sum(perr) / len(perr)).cpu().detach().numpy()), 3)
+            lerr += terr
+            lcount += 1
+
+    test_loss = lerr / lcount
     print(f"Test Error: \nAvg loss: {test_loss:>8f} \n")
     return test_loss
