@@ -17,13 +17,17 @@ device = 'cuda' if torch.cuda.is_available() and settings.enable_gpu else 'cpu'
 
 
 def find_largest_waveform_size(phone_dir: pathlib.Path) -> int:
-    sizes = []
+    msizes = 0
+    largest_file = ''
     for root, dirs, files in tqdm(os.walk(phone_dir), desc='Finding largest waveform size'):
         for f in files:
             if f.split('.')[1] == 'wav':
                 w, _ = librosa.load(pathlib.Path(root) / f, mono=True)
-                sizes.append(len(w))
-    return max(sizes)
+                if len(w) > msizes:
+                    largest_file = pathlib.Path(root) / f
+                    msizes = len(w)
+    print('Largest file is {} with a size of {}'.format(largest_file, msizes))
+    return msizes
 
 
 class TSVAudioDataset(Dataset):

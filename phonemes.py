@@ -7,6 +7,7 @@ import librosa
 import soundfile as sf
 from tqdm import tqdm
 import pyfoal
+import numpy as np
 
 from src.utils.tsv import TSVEntry, read_tsv
 from src.utils.mp_util import round_robin_map
@@ -49,13 +50,33 @@ class RecordingSample:
 def rec_trim_empty_space(v: RecordingSample):
     w, sr = librosa.load(v.location if not v.output_location.exists() else v.output_location, mono=True)
     wi = 0
+    ringbuffer = []
     for wi, wt in enumerate(w):
         if abs(wt) > 0.01:
-            break
+            if len(ringbuffer) >= 100:
+                if np.mean(ringbuffer) > -0.01:
+                    wi -= len(ringbuffer)
+                    break
+        if len(ringbuffer) < 500:
+            ringbuffer.append(wt)
+        else:
+            ringbuffer.pop(0)
+            ringbuffer.append(wt)
+
+    ringbuffer = []
     we = -1
     for we, wt in enumerate(reversed(w)):
         if abs(wt) > 0.01:
-            break
+            if len(ringbuffer) >= 100:
+                if np.mean(ringbuffer) > -0.01:
+                    we -= len(ringbuffer)
+                    break
+        if len(ringbuffer) < 500:
+            ringbuffer.append(wt)
+        else:
+            ringbuffer.pop(0)
+            ringbuffer.append(wt)
+
     if we <= 0:
         w = w[wi:]
     else:
