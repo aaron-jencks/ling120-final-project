@@ -2,6 +2,7 @@ import pathlib
 from typing import List
 import argparse
 import os
+import warnings
 
 import librosa
 import soundfile as sf
@@ -12,6 +13,9 @@ import numpy as np
 from src.utils.tsv import TSVEntry, read_tsv
 from src.utils.mp_util import round_robin_map
 from src.utils.sound_util import seconds_to_index
+
+
+warnings.filterwarnings('ignore', 'PySoundFile failed. Trying audioread instead.')
 
 
 class Phoneme:
