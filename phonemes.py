@@ -110,6 +110,10 @@ def rec_create_forced_alignment(v):
     return True
 
 
+def masss_load(v: RecordingSample):
+    return librosa.load(v.output_location, mono=True)
+
+
 def trim_empty_space(values: List[TSVEntry], recording_locations: pathlib.Path):
     samples = list(map(lambda x: RecordingSample(x, recording_locations),
                        tqdm(values, desc='Creating output file locations')))
@@ -124,7 +128,7 @@ def create_phoneme_alignment(values: List[TSVEntry], recording_location: pathlib
     for si, start in enumerate(chunks):
         print('Aligning chunk {} of {}'.format(si + 1, len(chunks)))
         subset = samples[start:start + 1024]
-        wsr = list(map(lambda x: librosa.load(x.location, mono=True), tqdm(subset, desc='Loading waveforms')))
+        wsr = round_robin_map(subset, masss_load, 10, 'Loading waveforms')
         zipped = [(s, w[0], w[1]) for s, w in zip(subset, wsr)]
         round_robin_map(zipped, rec_create_forced_alignment, 10, 'Aligning chunk')
 
