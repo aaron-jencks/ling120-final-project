@@ -133,10 +133,14 @@ if __name__ == '__main__':
     parser.add_argument('tsv_file', type=pathlib.Path, help='The file containing the list of sample file locations')
     parser.add_argument('clips_dir', type=pathlib.Path, help='The directory containing the sample files')
     parser.add_argument('--trim', action='store_true')
+    parser.add_argument('--text', action='store_true')
 
     args = parser.parse_args()
     records = read_tsv(args.tsv_file)
     if args.trim:
         trim_empty_space(records, args.clips_dir)
+
+    if args.text:
+        create_text_files(records, args.clips_dir)
 
     create_phoneme_alignment(records, args.clips_dir)
