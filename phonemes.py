@@ -123,8 +123,8 @@ def create_phoneme_alignment(values: List[TSVEntry], recording_location: pathlib
     for start in tqdm(range(0, len(samples), 1024), desc='Aligning phonemes'):
         subset = samples[start:start + 1024]
         pyfoal.from_files_to_files([s.text_location for s in subset],
-                                   [s.alignment_location for s in subset],
-                                   [s.output_location for s in subset])
+                                   [s.output_location for s in subset],
+                                   [s.alignment_location for s in subset])
 
 
 def create_text_files(values: List[TSVEntry], recording_location: pathlib.Path):
