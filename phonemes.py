@@ -49,6 +49,7 @@ class RecordingSample:
         self.location = loc / e['path']
         self.output_location = loc / (self.base_filename + '.wav')
         self.alignment_location = loc / (self.base_filename + '.json')
+        self.text_location = loc / (self.base_filename + '_text.txt')
 
 
 def rec_trim_empty_space(v: RecordingSample):
@@ -110,15 +111,20 @@ def rec_create_forced_alignment(v: RecordingSample):
 
 
 def trim_empty_space(values: List[TSVEntry], recording_locations: pathlib.Path):
-    round_robin_map(list(map(lambda x: RecordingSample(x, recording_locations),
-                             tqdm(values, desc='Creating output file locations'))), rec_trim_empty_space,
+    samples = list(map(lambda x: RecordingSample(x, recording_locations),
+                       tqdm(values, desc='Creating output file locations')))
+    round_robin_map(samples, rec_trim_empty_space,
                     1024, 'Trimming empty space')
 
 
 def create_phoneme_alignment(values: List[TSVEntry], recording_location: pathlib.Path):
-    round_robin_map(list(map(lambda x: RecordingSample(x, recording_location),
-                             tqdm(values, desc='Creating output file locations'))), rec_create_forced_alignment,
-                    1024, 'Creating Forced Alignments')
+    samples = list(map(lambda x: RecordingSample(x, recording_location),
+                       tqdm(values, desc='Creating output file locations')))
+    for start in tqdm(range(0, len(samples), 1024), desc='Aligning phonemes'):
+        subset = samples[start:start + 1024]
+        pyfoal.from_files_to_files([s.text_location for s in subset],
+                                   [s.alignment_location for s in subset],
+                                   [s.output_location for s in subset])
 
 
 def create_text_files(values: List[TSVEntry], recording_location: pathlib.Path):
