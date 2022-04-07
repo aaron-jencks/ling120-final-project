@@ -120,7 +120,9 @@ def trim_empty_space(values: List[TSVEntry], recording_locations: pathlib.Path):
 def create_phoneme_alignment(values: List[TSVEntry], recording_location: pathlib.Path):
     samples = list(map(lambda x: RecordingSample(x, recording_location),
                        tqdm(values, desc='Creating output file locations')))
-    for start in tqdm(range(0, len(samples), 1024), desc='Aligning phonemes'):
+    chunks = range(0, len(samples), 1024)
+    for si, start in enumerate(chunks):
+        print('Aligning chunk {} of {}'.format(si + 1, len(chunks)))
         subset = samples[start:start + 1024]
         wsr = list(map(lambda x: librosa.load(x.location, mono=True), tqdm(subset, desc='Loading waveforms')))
         zipped = [(s, w[0], w[1]) for s, w in zip(subset, wsr)]
