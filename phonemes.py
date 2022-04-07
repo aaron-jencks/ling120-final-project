@@ -90,7 +90,7 @@ def rec_trim_empty_space(v: RecordingSample):
 
 
 def rec_create_forced_alignment(v: RecordingSample):
-    w, sr = librosa.load(v.location, mono=True)
+    w, sr = librosa.load(v.output_location, mono=True)
     alignment = pyfoal.align(v.entry['sentence'], w, sr)
     alignment.save_json(v.alignment_location)
     phonemes = [Phoneme(p.phoneme, p.start(), p.end(), sr, len(w)) for p in alignment.phonemes()]
