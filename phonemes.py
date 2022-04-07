@@ -122,7 +122,7 @@ def create_phoneme_alignment(values: List[TSVEntry], recording_location: pathlib
                        tqdm(values, desc='Creating output file locations')))
     for start in tqdm(range(0, len(samples), 1024), desc='Aligning phonemes'):
         subset = samples[start:start + 1024]
-        wsr = list(map(lambda x: librosa.load(x.location, mono=True), subset))
+        wsr = list(map(lambda x: librosa.load(x.location, mono=True), tqdm(subset, desc='Loading waveforms')))
         zipped = [(s, w[0], w[1]) for s, w in zip(subset, wsr)]
         round_robin_map(zipped, rec_create_forced_alignment, 10, 'Aligning chunk')
 
