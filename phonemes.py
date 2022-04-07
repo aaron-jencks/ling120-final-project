@@ -90,8 +90,8 @@ def rec_trim_empty_space(v: RecordingSample):
     return True
 
 
-def rec_create_forced_alignment(v: RecordingSample):
-    w, sr = librosa.load(v.location, mono=True)
+def rec_create_forced_alignment(v):
+    v, w, sr = v
     alignment = pyfoal.align(v.entry['sentence'], w, sr)
     alignment.save_json(v.alignment_location)
     phonemes = [Phoneme(p.phoneme, p.start(), p.end(), sr, len(w)) for p in alignment.phonemes()]
@@ -122,9 +122,9 @@ def create_phoneme_alignment(values: List[TSVEntry], recording_location: pathlib
                        tqdm(values, desc='Creating output file locations')))
     for start in tqdm(range(0, len(samples), 1024), desc='Aligning phonemes'):
         subset = samples[start:start + 1024]
-        pyfoal.from_files_to_files([s.text_location for s in subset],
-                                   [s.output_location for s in subset],
-                                   [s.alignment_location for s in subset])
+        wsr = list(map(lambda x: librosa.load(x.location, mono=True), subset))
+        zipped = [(s, w[0], w[1]) for s, w in zip(subset, wsr)]
+        round_robin_map(zipped, rec_create_forced_alignment, 10, 'Aligning chunk')
 
 
 def create_text_files(values: List[TSVEntry], recording_location: pathlib.Path):
