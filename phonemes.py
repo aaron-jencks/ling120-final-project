@@ -90,22 +90,25 @@ def rec_trim_empty_space(v: RecordingSample):
 
 
 def rec_create_forced_alignment(v: RecordingSample):
-    w, sr = librosa.load(v.output_location, mono=True)
-    alignment = pyfoal.align(v.entry['sentence'], w, sr)
-    alignment.save_json(v.alignment_location)
-    phonemes = [Phoneme(p.phoneme, p.start(), p.end(), sr, len(w)) for p in alignment.phonemes()]
-    pdir = v.directory / 'phonemes'
+    if not v.alignment_location.exists():
+        w, sr = librosa.load(v.output_location, mono=True)
+        try:
+            alignment = pyfoal.align(v.entry['sentence'], w, sr)
+            alignment.save_json(v.alignment_location)
+            phonemes = [Phoneme(p.phoneme, p.start(), p.end(), sr, len(w)) for p in alignment.phonemes()]
+            pdir = v.directory / 'phonemes'
 
-    if not pdir.exists():
-        os.mkdir(pdir)
+            if not pdir.exists():
+                os.mkdir(pdir)
 
-    for pi, p in enumerate(phonemes):
-        psubdir = pdir / p.name
-        if not psubdir.exists():
-            os.mkdir(psubdir)
+            for pi, p in enumerate(phonemes):
+                psubdir = pdir / p.name
+                if not psubdir.exists():
+                    os.mkdir(psubdir)
 
-        sf.write(psubdir / (v.base_filename + '_{}.wav'.format(pi)), w[p.start_index:p.stop_index], sr)
-
+                sf.write(psubdir / (v.base_filename + '_{}.wav'.format(pi)), w[p.start_index:p.stop_index], sr)
+        except RuntimeError as e:
+            print(e)
     return True
 
 
