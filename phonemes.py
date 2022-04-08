@@ -111,6 +111,8 @@ def rec_create_forced_alignment(v: RecordingSample):
             print(e)
         except IndexError as e:
             print(e)
+        except ValueError as e:
+            print(e)
     return True
 
 
