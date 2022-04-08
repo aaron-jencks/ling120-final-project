@@ -109,6 +109,8 @@ def rec_create_forced_alignment(v: RecordingSample):
                 sf.write(psubdir / (v.base_filename + '_{}.wav'.format(pi)), w[p.start_index:p.stop_index], sr)
         except RuntimeError as e:
             print(e)
+        except IndexError as e:
+            print(e)
     return True
 
 
