@@ -48,14 +48,16 @@ class TSVAudioDataset(Dataset):
 
         self.indices = []
         for e in self.tsv:
-            phonemes = []
             fname = e['path'].split('.')[0]
-            with open(self.clips / (fname + '.json'), 'r') as fp:
-                alignment = json.load(fp)
-            for w in alignment['words']:
-                for name, _, _ in w['phonemes']:
-                    phonemes.append(name)
-            self.indices.append(len(phonemes))
+            if (self.clips / (fname + '.json')).exists():
+                phonemes = []
+                with open(self.clips / (fname + '.json'), 'r') as fp:
+                    alignment = json.load(fp)
+                for w in alignment['words']:
+                    for it, (name, _, _) in enumerate(w['phonemes']):
+                        if (self.phonemes / name / (fname + '_{}.wav'.format(it))).exists():
+                            phonemes.append(name)
+                self.indices.append(len(phonemes))
 
     def __len__(self):
         return sum(self.indices)
@@ -79,8 +81,9 @@ class AudioDataset(TSVAudioDataset):
                     with open(self.clips / (fname + '.json'), 'r') as fp:
                         alignment = json.load(fp)
                     for w in alignment['words']:
-                        for name, _, _ in w['phonemes']:
-                            phonemes.append(name)
+                        for ni, (name, _, _) in enumerate(w['phonemes']):
+                            if (self.phonemes / name / (fname + '_{}.wav'.format(ni))).exists():
+                                phonemes.append(name)
 
                     w, sr = librosa.load(self.phonemes / phonemes[it] / (fname + '_{}.wav'.format(it)), mono=True)
                     if len(w) < self.padding_size:
