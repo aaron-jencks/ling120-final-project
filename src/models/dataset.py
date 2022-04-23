@@ -1,6 +1,5 @@
 import json
 import pathlib
-from typing import List, Tuple
 
 from sklearn import preprocessing
 import numpy as np
@@ -11,8 +10,7 @@ import librosa
 from tqdm import tqdm
 
 from .. import settings
-from ..utils.tsv import read_tsv, TSVEntry, write_tsv
-from ..utils.mp_util import round_robin_map
+from ..utils.tsv import read_tsv
 
 # logger = set_logger('running_data_boosting_classifier', use_tb_logger=True)
 device = 'cuda' if torch.cuda.is_available() and settings.enable_gpu else 'cpu'
@@ -42,71 +40,6 @@ def find_largest_waveform_size(phone_dir: pathlib.Path) -> int:
     print('Largest file is {} with a size of {}'.format(largest_file, msizes))
 
     return msizes
-
-
-def collect_phonemes_and_filenames(v: Tuple[str, pathlib.Path, pathlib.Path, preprocessing.LabelEncoder]) -> \
-        List[Tuple[str, int, int, pathlib.Path]]:
-    fname, clip_name, phoneme_dir, enc = v
-    phonemes = []
-    with open(clip_name, 'r') as fp:
-        alignment = json.load(fp)
-
-    for w in alignment['words']:
-        for it, (name, _, _) in enumerate(w['phonemes']):
-            phonemes.append((fname, it, enc.transform([name])[0], phoneme_dir / name / (fname + '_{}.wav'.format(it))))
-
-    return phonemes
-
-
-def generate_tsv_file(tsv_file_in: pathlib.Path, tsv_file_out: pathlib.Path,
-                      clip_dir: pathlib.Path, phoneme_dir: pathlib.Path):
-    tsv = read_tsv(tsv_file_in)
-
-    phones = []
-    for root, dirs, files in os.walk(phoneme_dir):
-        for d in dirs:
-            phones.append(d)
-        break
-
-    enc = preprocessing.LabelEncoder().fit(phones)
-    space = enc.transform(['sp'])[0]
-
-    clips = []
-    for e in tqdm(tsv, desc='Generating indices'):
-        fname = e['path'].split('.')[0]
-        clip_name = clip_dir / (fname + '.json')
-        if clip_name.exists():
-            clips.append((fname, clip_name, phoneme_dir, enc))
-
-    indices = round_robin_map(clips, collect_phonemes_and_filenames, tqdm_label='Generating phoneme indices')
-
-    fmap = {}
-    for fname, it, pv, pf in tqdm(indices, desc='Parsing mp result'):
-        if fname not in fmap:
-            fmap[fname] = []
-        fmap[fname].append((it, pv, pf))
-
-    indices = []
-    for fname in tqdm(fmap, desc='Generating tsv'):
-        fmap[fname].sort(key=lambda x: x[0])
-
-        phonemes = fmap[fname]
-        for it, (_, p, d) in enumerate(phonemes[1:]):
-            _, pp, pd = phonemes[it]
-            _, ppp, _ = phonemes[it + 1]
-
-            if it == 0:
-                trigram = (space, pp, p)
-            elif it == len(phonemes[1:]) - 1:
-                trigram = (pp, p, space)
-            else:
-                trigram = (ppp, pp, p)
-
-            if pd.exists():
-                ent = TSVEntry(['previous', 'current', 'next', 'directory'], [*trigram, str(pd)])
-                indices.append(ent)
-
-    write_tsv(tsv_file_out, indices)
 
 
 class TSVAudioDataset(Dataset):
