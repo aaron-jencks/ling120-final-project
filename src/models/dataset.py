@@ -10,7 +10,7 @@ import librosa
 from tqdm import tqdm
 
 from .. import settings
-from ..utils.tsv import read_tsv
+from ..utils.tsv import read_tsv, TSVEntry, write_tsv
 
 # logger = set_logger('running_data_boosting_classifier', use_tb_logger=True)
 device = 'cuda' if torch.cuda.is_available() and settings.enable_gpu else 'cpu'
@@ -19,15 +19,71 @@ device = 'cuda' if torch.cuda.is_available() and settings.enable_gpu else 'cpu'
 def find_largest_waveform_size(phone_dir: pathlib.Path) -> int:
     msizes = 0
     largest_file = ''
-    for root, dirs, files in tqdm(os.walk(phone_dir), desc='Finding largest waveform size'):
-        for f in files:
+    print('Finding the largest waveform size')
+    for root, dirs, files in os.walk(phone_dir):
+        print('Current largest is {}'.format(msizes))
+        rname = pathlib.Path(root)
+        for f in tqdm(files, desc='Checking {}'.format(root.split('/')[-1].split('\\')[-1])):
             if f.split('.')[1] == 'wav':
-                w, _ = librosa.load(pathlib.Path(root) / f, mono=True)
-                if len(w) > msizes:
-                    largest_file = pathlib.Path(root) / f
-                    msizes = len(w)
+                pname = rname / f
+                fsize = os.path.getsize(pname)
+                if fsize > 0:
+                    if fsize > msizes:
+                        largest_file = pname
+                        msizes = fsize
+                else:
+                    print('Removing {}'.format(pname))
+                    os.remove(pname)
+
+    w, _ = librosa.load(largest_file, mono=True)
+    msizes = len(w)
     print('Largest file is {} with a size of {}'.format(largest_file, msizes))
+
     return msizes
+
+
+def generate_tsv_file(tsv_file_in: pathlib.Path, tsv_file_out: pathlib.Path,
+                      clip_dir: pathlib.Path, phoneme_dir: pathlib.Path):
+    tsv = read_tsv(tsv_file_in)
+
+    phones = []
+    for root, dirs, files in os.walk(phoneme_dir):
+        for d in dirs:
+            phones.append(d)
+        break
+
+    enc = preprocessing.LabelEncoder().fit(phones)
+    space = enc.transform(['sp'])[0]
+
+    indices = []
+    for e in tqdm(tsv, desc='Generating indices'):
+        fname = e['path'].split('.')[0]
+        clip_name = clip_dir / (fname + '.json')
+        if clip_name.exists():
+            phonemes = []
+            with open(clip_name, 'r') as fp:
+                alignment = json.load(fp)
+
+            for w in alignment['words']:
+                for it, (name, _, _) in enumerate(w['phonemes']):
+                    phonemes.append((enc.transform([name])[0], phoneme_dir / name / (fname + '_{}.wav'.format(it))))
+
+            for it, (p, d) in enumerate(phonemes[1:]):
+                pp, pd = phonemes[it]
+                ppp, _ = phonemes[it + 1]
+
+                if it == 0:
+                    trigram = (space, pp, p)
+                elif it == len(phonemes[1:]) - 1:
+                    trigram = (pp, p, space)
+                else:
+                    trigram = (ppp, pp, p)
+
+                if pd.exists():
+                    ent = TSVEntry(['previous', 'current', 'next', 'directory'], [*trigram, str(pd)])
+                    indices.append(ent)
+
+        write_tsv(tsv_file_out, indices)
 
 
 class TSVAudioDataset(Dataset):
@@ -47,17 +103,18 @@ class TSVAudioDataset(Dataset):
         self.space = self.enc.transform(['sp'])[0]
 
         self.indices = []
-        for e in self.tsv:
+        for e in tqdm(self.tsv, desc='Generating indices'):
             fname = e['path'].split('.')[0]
-            if (self.clips / (fname + '.json')).exists():
+            clip_name = self.clips / (fname + '.json')
+            if clip_name.exists():
                 phonemes = []
-                with open(self.clips / (fname + '.json'), 'r') as fp:
+                with open(clip_name, 'r') as fp:
                     alignment = json.load(fp)
                 for w in alignment['words']:
                     for it, (name, _, _) in enumerate(w['phonemes']):
                         if (self.phonemes / name / (fname + '_{}.wav'.format(it))).exists():
                             phonemes.append(name)
-                self.indices.append(len(phonemes))
+                self.indices.append(phonemes)
 
     def __len__(self):
         return sum(self.indices)
@@ -73,17 +130,12 @@ class AudioDataset(TSVAudioDataset):
         result = []
         waveforms = []
         for it in item:
-            for i, j in enumerate(self.indices):
+            for i, phonemes in enumerate(self.indices):
+                j = len(phonemes)
                 if it < j:
                     e = self.tsv[i]
                     phonemes = []
                     fname = e['path'].split('.')[0]
-                    with open(self.clips / (fname + '.json'), 'r') as fp:
-                        alignment = json.load(fp)
-                    for w in alignment['words']:
-                        for ni, (name, _, _) in enumerate(w['phonemes']):
-                            if (self.phonemes / name / (fname + '_{}.wav'.format(ni))).exists():
-                                phonemes.append(name)
 
                     w, sr = librosa.load(self.phonemes / phonemes[it] / (fname + '_{}.wav'.format(it)), mono=True)
                     if len(w) < self.padding_size:
