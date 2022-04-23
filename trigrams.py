@@ -18,12 +18,18 @@ def collect_phonemes_and_filenames(v: Tuple[str, pathlib.Path, pathlib.Path, pre
         List[Tuple[str, int, int, pathlib.Path]]:
     fname, clip_name, phoneme_dir, enc = v
     phonemes = []
-    with open(clip_name, 'r') as fp:
-        alignment = json.load(fp)
+    try:
+        with open(clip_name, 'r') as fp:
+            alignment = json.load(fp)
 
-    for w in alignment['words']:
-        for it, (name, _, _) in enumerate(w['phonemes']):
-            phonemes.append((fname, it, enc.transform([name])[0], phoneme_dir / name / (fname + '_{}.wav'.format(it))))
+        for w in alignment['words']:
+            for it, (name, _, _) in enumerate(w['phonemes']):
+                phonemes.append((fname, it, enc.transform([name])[0],
+                                 phoneme_dir / name / (fname + '_{}.wav'.format(it))))
+    except json.JSONDecodeError:
+        return []
+    except OSError:
+        return []
 
     return phonemes
 
@@ -51,10 +57,12 @@ def generate_tsv_file(tsv_file_in: pathlib.Path, tsv_file_out: pathlib.Path,
     indices = round_robin_map(clips, collect_phonemes_and_filenames, tqdm_label='Generating phoneme indices')
 
     fmap = {}
-    for fname, it, pv, pf in tqdm(indices, desc='Parsing mp result'):
-        if fname not in fmap:
-            fmap[fname] = []
-        fmap[fname].append((it, pv, pf))
+
+    for index in tqdm(indices, desc='Parsing mp result'):
+        for fname, it, pv, pf in index:
+            if fname not in fmap:
+                fmap[fname] = []
+            fmap[fname].append((it, pv, pf))
 
     indices = []
     for fname in tqdm(fmap, desc='Generating tsv'):
