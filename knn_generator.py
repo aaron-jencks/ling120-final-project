@@ -3,6 +3,7 @@ import argparse
 import warnings
 
 import numpy as np
+from tqdm import tqdm
 
 from src.models.dataset import find_largest_waveform_size, AudioFileWindowDataset
 from src.utils.tsv import TSVEntry, append_tsv
@@ -53,7 +54,7 @@ if __name__ == '__main__':
         windows = [(waveform, window, window + args.window_size) for window in range(len(waveform) - args.window_size)]
         # ffts = map(parse_waveform_segment, tqdm(windows, desc='generating ffts'))
         ffts = round_robin_map(windows, parse_waveform_segment)
-        for f, st, stp in ffts:
+        for f, st, stp in tqdm(ffts, desc='Generating TSV'):
             entry_data = [fname, st, stp, f, np.sqrt(sum(map(lambda x: x * x, f)))]
             tsv_entries.append(TSVEntry(tsv_columns, list(map(str, entry_data))))
         append_tsv(args.output, tsv_entries)
