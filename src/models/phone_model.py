@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import Dataset
 import argparse
 
-from src.models.dataset import AudioDataset, find_largest_waveform_size
+from src.models.dataset import AudioPhonemeDataset, find_largest_waveform_size
 from src.models.generic_model import GeneralPerceptron, train_loop, test_loop
 
 
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     else:
         max_output_size = args.wave_size
 
-    dataset = AudioDataset(args.tsv_file, args.clip_dir, args.phoneme_dir, max_output_size)
+    dataset = AudioPhonemeDataset(args.tsv_file, args.clip_dir, args.phoneme_dir, max_output_size)
 
     # Version 1 (No Gradient Boosting)
     model = GeneralPerceptron(3, max_output_size, args.layer_count,

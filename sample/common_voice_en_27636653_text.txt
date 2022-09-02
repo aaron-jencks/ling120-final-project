@@ -1,0 +1,1 @@
+Numbers without blue entries have no solution under these constraints.

@@ -48,4 +48,12 @@ def write_tsv(f: pathlib.Path, values: List[TSVEntry]):
         data = '\t'.join(values[0].values.keys()) + '\n'
         data += '\n'.join(map(TSVEntry.to_tsv, values))
         data = data.encode('utf8')
-        f.write_bytes(data)
+        fp.write(data)
+
+
+def append_tsv(f: pathlib.Path, values: List[TSVEntry]):
+    with open(f, 'ab') as fp:
+        data = '\t'.join(values[0].values.keys()) + '\n'
+        data += '\n'.join(map(TSVEntry.to_tsv, values))
+        data = data.encode('utf8')
+        fp.write(data)

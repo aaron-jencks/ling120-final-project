@@ -1,5 +1,6 @@
 import json
 import pathlib
+import math
 
 from sklearn import preprocessing
 import numpy as np
@@ -42,7 +43,7 @@ def find_largest_waveform_size(phone_dir: pathlib.Path) -> int:
     return msizes
 
 
-class TSVAudioDataset(Dataset):
+class TSVAudioPhonemeDataset(Dataset):
     def __init__(self, tsv_file: pathlib.Path, clip_dir: pathlib.Path, phoneme_dir: pathlib.Path, output_size: int):
         self.tsv = read_tsv(tsv_file)
         self.clips = clip_dir
@@ -59,6 +60,7 @@ class TSVAudioDataset(Dataset):
         self.space = self.enc.transform(['sp'])[0]
 
         self.indices = []
+        current_index = 0
         for e in tqdm(self.tsv, desc='Generating indices'):
             fname = e['path'].split('.')[0]
             clip_name = self.clips / (fname + '.json')
@@ -70,13 +72,35 @@ class TSVAudioDataset(Dataset):
                     for it, (name, _, _) in enumerate(w['phonemes']):
                         if (self.phonemes / name / (fname + '_{}.wav'.format(it))).exists():
                             phonemes.append(name)
-                self.indices.append(phonemes)
+                self.indices.append(self.enc.transform(phonemes))
 
     def __len__(self):
-        return sum(self.indices)
+        return sum(map(len, self.indices))
+    
+    
+class AudioFileWindowDataset:
+    def __init__(self, tsv_file: pathlib.Path, clip_dir: pathlib.Path, output_size: int, pad: bool = True):
+        self.tsv = read_tsv(tsv_file)
+        self.clips = clip_dir
+        self.padding_size = output_size
+        self.pad = pad
+
+    def __len__(self):
+        return len(self.tsv)
+
+    def __getitem__(self, item):
+        e = self.tsv[item]
+        fname = e['path'].split('.')[0]
+
+        w, sr = librosa.load(self.clips / (fname + '.wav'), mono=True)
+        if self.pad and len(w) < self.padding_size:
+            diff = self.padding_size - len(w)
+            w = np.pad(w, (0, diff), 'constant', constant_values=(0, 0))
+
+        return w, sr, fname
 
 
-class AudioDataset(TSVAudioDataset):
+class AudioPhonemeDataset(TSVAudioPhonemeDataset):
     def __getitem__(self, item):
         if torch.is_tensor(item):
             item = item.tolist()
@@ -117,7 +141,7 @@ class AudioDataset(TSVAudioDataset):
         return sample['phonemes'], sample['waveforms']
 
 
-class AudioEncoderDataset(TSVAudioDataset):
+class AudioEncoderPhonemeDataset(TSVAudioPhonemeDataset):
     def __getitem__(self, item):
         if torch.is_tensor(item):
             item = item.tolist()
@@ -126,21 +150,31 @@ class AudioEncoderDataset(TSVAudioDataset):
 
         waveforms = []
         for it in item:
-            for i, j in enumerate(self.indices):
+            for i, phonemes in enumerate(self.indices):
+                j = len(phonemes)
                 if it < j:
                     e = self.tsv[i]
                     phonemes = []
                     fname = e['path'].split('.')[0]
+
+                    if not (self.clips / (fname + '.json')).exists():
+                        continue
+
                     with open(self.clips / (fname + '.json'), 'r') as fp:
                         alignment = json.load(fp)
                     for w in alignment['words']:
                         for name, _, _ in w['phonemes']:
                             phonemes.append(name)
 
+                    while not (self.phonemes / phonemes[it] / (fname + '_{}.wav'.format(it))).exists():
+                        it += 1
+
                     w, sr = librosa.load(self.phonemes / phonemes[it] / (fname + '_{}.wav'.format(it)), mono=True)
+
                     if len(w) < self.padding_size:
                         diff = self.padding_size - len(w)
                         w = np.pad(w, (0, diff), 'constant', constant_values=(0, 0))
+
                     waveforms.append(w)
                     break
                 it -= j

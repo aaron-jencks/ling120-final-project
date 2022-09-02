@@ -54,7 +54,10 @@ def generate_tsv_file(tsv_file_in: pathlib.Path, tsv_file_out: pathlib.Path,
         if clip_name.exists():
             clips.append((fname, clip_name, phoneme_dir, enc))
 
-    indices = round_robin_map(clips, collect_phonemes_and_filenames, tqdm_label='Generating phoneme indices')
+    # indices = round_robin_map(clips, collect_phonemes_and_filenames, tqdm_label='Generating phoneme indices')
+    indices = []
+    for c in tqdm(clips, desc='Generating phoneme indices'):
+        indices.append(collect_phonemes_and_filenames(c))
 
     fmap = {}
 

@@ -1,2 +1,2 @@
-enable_gpu = True
+enable_gpu = False
 
