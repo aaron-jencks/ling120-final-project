@@ -26,7 +26,7 @@ if __name__ == '__main__':
                         help='The output size of the waveform, for if you\'ve ran this before.')
     parser.add_argument('--window_size', type=int, default=20000,
                         help='The output size of the window to use for the fft.')
-    parser.add_argument('--output', type=pathlib.Path, default=pathlib.Path('./knn.tsv'),
+    parser.add_argument('--output', type=pathlib.Path, default=pathlib.Path('./fft.tsv'),
                         help='The file that you would like to save the KNN in')
 
     args = parser.parse_args()
@@ -52,6 +52,6 @@ if __name__ == '__main__':
         print(f'parsing {fname} with {len(waveform)} values and sample rate of {sr}')
         windows = [(tsv_columns, fname, waveform, window, window + args.window_size)
                    for window in range(len(waveform) - args.window_size)]
-        tsv_entries = list(map(parse_waveform_segment, tqdm(windows, desc='generating ffts')))
-        # tsv_entries = round_robin_map(windows, parse_waveform_segment)
+        # tsv_entries = list(map(parse_waveform_segment, tqdm(windows, desc='generating ffts')))
+        tsv_entries = round_robin_map(windows, parse_waveform_segment)
         append_tsv(args.output, tsv_entries)
