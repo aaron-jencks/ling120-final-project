@@ -3,6 +3,7 @@ import argparse
 import warnings
 
 import numpy as np
+from tqdm import tqdm
 
 from src.models.dataset import find_largest_waveform_size, AudioFileWindowDataset
 from src.utils.tsv import TSVEntry, append_tsv
@@ -12,8 +13,8 @@ from src.utils.mp_util import round_robin_map
 def parse_waveform_segment(tup):
     cols, fn, wfm, start, stop = tup
     segment = wfm[start:stop]
-    fft = np.fft.rfft(segment).tolist()
-    entry_data = [fn, start, stop, fft, np.sqrt(sum(map(lambda x: x * x, fft)))]
+    fft = np.fft.rfft(segment).real
+    entry_data = [fn, start, stop, ','.join(map(str, fft))]
     return TSVEntry(cols, list(map(str, entry_data)))
 
 
@@ -33,8 +34,7 @@ if __name__ == '__main__':
         'filename',
         'start',
         'stop',
-        'fft',
-        'distance'
+        'fft'
     ]
 
     if args.wave_size < 0:
@@ -52,6 +52,6 @@ if __name__ == '__main__':
         print(f'parsing {fname} with {len(waveform)} values and sample rate of {sr}')
         windows = [(tsv_columns, fname, waveform, window, window + args.window_size)
                    for window in range(len(waveform) - args.window_size)]
-        # ffts = map(parse_waveform_segment, tqdm(windows, desc='generating ffts'))
-        tsv_entries = round_robin_map(windows, parse_waveform_segment)
+        tsv_entries = list(map(parse_waveform_segment, tqdm(windows, desc='generating ffts')))
+        # tsv_entries = round_robin_map(windows, parse_waveform_segment)
         append_tsv(args.output, tsv_entries)
