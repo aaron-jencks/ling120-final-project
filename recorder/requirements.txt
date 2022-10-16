@@ -1,0 +1,6 @@
+pyqt5
+scipy
+sounddevice
+pyfoal
+pyqtgraph
+simpleaudio
